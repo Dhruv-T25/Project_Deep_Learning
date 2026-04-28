@@ -2,41 +2,84 @@ import cv2
 import numpy as np
 import tensorflow as tf
 import time
+import threading
+from queue import Queue
 
-def live_emotion_detector(model_path):
+MODEL_PATH = "C:\\python pro\\project DL\\Models\\Normal\\emotion_model_N.h5"
 
-    model = tf.keras.models.load_model(model_path)
+emotion_map = {
+    0: 'Surprise',
+    1: 'Fear',
+    2: 'Disgust',
+    3: 'Happiness',
+    4: 'Sadness',
+    5: 'Anger',
+    6: 'Neutral'
+}
 
-    emotion_map = {
-        0: 'Surprise',
-        1: 'Fear',
-        2: 'Disgust',
-        3: 'Happiness',
-        4: 'Sadness',
-        5: 'Anger',
-        6: 'Neutral'
-    }
+frame_queue = Queue(maxsize=5)
+current_emotion = "..."
+running = True
+
+model = tf.keras.models.load_model(MODEL_PATH)
+
+# ---------- CAMERA THREAD ----------
+def cam_thread():
+    global running
 
     cap = cv2.VideoCapture(0)
 
     if not cap.isOpened():
-        raise RuntimeError("Camera not working")
+        print("❌ Camera error")
+        running = False
+        return
 
-    last_time = 0
-    current_emotion = "..."
+    window_name = "Thread Test"
+    cv2.namedWindow(window_name)
 
-    try:
-        while True:
-            ret, frame = cap.read()
-            if not ret:
-                continue
+    while running:
+        ret, frame = cap.read()
+        if not ret:
+            continue
 
-            # ---- fast inference (0.5 sec gap) ----
-            if time.time() - last_time > 0.5:
-                last_time = time.time()
+        small = cv2.resize(frame, (128, 128))
 
-                img = cv2.resize(frame, (224, 224))
-                img = img / 255.0
+        if not frame_queue.full():
+            frame_queue.put(small)
+
+        cv2.putText(frame, f"Emotion: {current_emotion}",
+                    (20, 40),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    1,
+                    (0, 255, 0),
+                    2)
+
+        cv2.imshow(window_name, frame)
+
+        # 🔥 key press exit
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            running = False
+            break
+
+        # 🔥 cross button detect
+        if cv2.getWindowProperty(window_name, cv2.WND_PROP_VISIBLE) < 1:
+            print("🪟 Window closed")
+            running = False
+            break
+
+    cap.release()
+    cv2.destroyAllWindows()
+
+# ---------- MODEL THREAD ----------
+def model_thread():
+    global current_emotion, running
+
+    while running:
+        if not frame_queue.empty():
+            frame = frame_queue.get()
+
+            try:
+                img = frame / 255.0
                 img = np.expand_dims(img, axis=0)
 
                 preds = model.predict(img, verbose=0)
@@ -44,36 +87,36 @@ def live_emotion_detector(model_path):
 
                 current_emotion = emotion_map.get(label, "Unknown")
 
-            # yield frame + emotion
-            yield frame, current_emotion
+            except Exception as e:
+                print("Model error:", e)
 
-    finally:
-        cap.release()
+        time.sleep(0.05)
 
-if __name__ == "__main__":
-    model_path = "C:\\python pro\\project DL\\Models\\Normal\\emotion_model_N.h5"
+# ---------- MAIN ----------
+try:
+    t1 = threading.Thread(target=cam_thread)
+    t2 = threading.Thread(target=model_thread)
+
+    t1.start()
+    t2.start()
+
+    while running:
+        time.sleep(0.1)
+
+except KeyboardInterrupt:
+    print("\n⛔ Ctrl+C detected, stopping...")
+
+    running = False   # 🔥 sab threads band
+
+finally:
+    print("🧹 Cleaning up...")
 
     try:
-        for frame, emotion in live_emotion_detector(model_path):
+        t1.join(timeout=1)
+        t2.join(timeout=1)
+    except:
+        pass
 
-            print(f"Detected Emotion: {emotion}")
+    cv2.destroyAllWindows()
 
-            # display frame
-            cv2.putText(frame, f"Emotion: {emotion}",
-                        (20, 40),
-                        cv2.FONT_HERSHEY_SIMPLEX,
-                        1,
-                        (0, 255, 0),
-                        2)
-
-            cv2.imshow("Test Camera", frame)
-
-            # exit
-            if cv2.waitKey(1) & 0xFF == ord('q'):
-                break
-
-    except Exception as e:
-        print(f"Error: {e}")
-
-    finally:
-        cv2.destroyAllWindows()
+    print("✅ Proper exit")

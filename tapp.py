@@ -2,7 +2,8 @@ import streamlit as st
 import cv2
 import tempfile
 import model_area as ma
-import time
+import subprocess
+import sys
 
 st.set_page_config(page_title="Video Analyzer", layout="centered")
 
@@ -55,48 +56,28 @@ if mode == "📁 Upload Video":
 # ---------- LIVE CAMERA MODE ----------
 elif mode == "📷 Live Camera":
 
-    st.write("Click Start to begin live detection")
+    st.write("Live Emotion Detection (External App)")
 
-    start = st.button("▶️ Start Camera")
-    stop = st.button("⛔ Stop")
+    if "proc" not in st.session_state:
+        st.session_state.proc = None
 
-    frame_placeholder = st.empty()
+    col1, col2 = st.columns(2)
 
-    if start:
-        cap = cv2.VideoCapture(0)
-        last_time = 0
-        emotion = "..."
+    # ▶️ START
+    if col1.button("▶️ Start Camera"):
+        if st.session_state.proc is None:
+            st.session_state.proc = subprocess.Popen(
+                [sys.executable, "live_camera.py"]
+            )
+            st.success("Camera Started 🚀")
+        else:
+            st.warning("Already running!")
 
-        try:
-            while cap.isOpened():
-
-                ret, frame = cap.read()
-                if not ret:
-                    continue
-
-                # ---- inference every 0.5 sec ----
-                if time.time() - last_time > 0.5:
-                    last_time = time.time()
-
-                    try:
-                        emotion = ma.give_to_model([frame])  # 🔥 reuse function
-                    except:
-                        emotion = "Error"
-
-                # overlay
-                cv2.putText(frame, f"Emotion: {emotion}",
-                            (20, 40),
-                            cv2.FONT_HERSHEY_SIMPLEX,
-                            1,
-                            (0, 255, 0),
-                            2)
-
-                # show in streamlit
-                frame_placeholder.image(frame, channels="BGR")
-
-                # stop condition
-                if stop:
-                    break
-
-        finally:
-            cap.release()
+    # ⛔ STOP
+    if col2.button("⛔ Stop Camera"):
+        if st.session_state.proc is not None:
+            st.session_state.proc.terminate()
+            st.session_state.proc = None
+            st.success("Camera Stopped ✅")
+        else:
+            st.warning("Not running!")
