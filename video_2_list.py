@@ -54,11 +54,13 @@ def pipeline(path, model):
     return outputs
 
 if __name__ == "__main__":
-    video_path = "test.mp4"
-    frames = video_to_frames(video_path)
-    print(len(frames))
-    # print(frames[0])
-    cv2.imshow("Frame 0", frames[0])
-    cv2.waitKey(0)
-    cv2.destroyAllWindows()
+    pass
+    # ## video to img tested ✅
+    # video_path = "test.mp4"
+    # frames = video_to_frames(video_path)
+    # print(len(frames))
+    # # print(frames[0])
+    # cv2.imshow("Frame 0", frames[0])
+    # cv2.waitKey(0)
+    # cv2.destroyAllWindows()
 

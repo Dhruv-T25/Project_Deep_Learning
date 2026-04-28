@@ -1,54 +1,79 @@
 import cv2
+import numpy as np
+import tensorflow as tf
 import time
-import model_area as ma
 
-cap = cv2.VideoCapture(0)
+def live_emotion_detector(model_path):
 
-if not cap.isOpened():
-    print("❌ Camera not working")
-    exit()
+    model = tf.keras.models.load_model(model_path)
 
-last_time = 0
-current_emotion = "..."
-buffer = []   # frames collect karne ke liye
+    emotion_map = {
+        0: 'Surprise',
+        1: 'Fear',
+        2: 'Disgust',
+        3: 'Happiness',
+        4: 'Sadness',
+        5: 'Anger',
+        6: 'Neutral'
+    }
 
-try:
-    while True:
-        ret, frame = cap.read()
-        if not ret:
-            continue
+    cap = cv2.VideoCapture(0)
 
-        try:
-            # ---- har 0.5 sec pe frame collect ----
+    if not cap.isOpened():
+        raise RuntimeError("Camera not working")
+
+    last_time = 0
+    current_emotion = "..."
+
+    try:
+        while True:
+            ret, frame = cap.read()
+            if not ret:
+                continue
+
+            # ---- fast inference (0.5 sec gap) ----
             if time.time() - last_time > 0.5:
                 last_time = time.time()
-                buffer.append(frame)
 
-            # ---- batch ready (2–4 frames) ----
-            if len(buffer) >= 3:
-                current_emotion = ma.give_to_model(buffer)  # 🔥 direct call
-                buffer.clear()  # reset
+                img = cv2.resize(frame, (224, 224))
+                img = img / 255.0
+                img = np.expand_dims(img, axis=0)
 
-        except Exception as e:
-            print(f"⚠️ Model error: {e}")
+                preds = model.predict(img, verbose=0)
+                label = np.argmax(preds)
 
-        # ---- display ----
-        cv2.putText(frame, f"Emotion: {current_emotion}",
-                    (20, 40),
-                    cv2.FONT_HERSHEY_SIMPLEX,
-                    1,
-                    (0, 255, 0),
-                    2)
+                current_emotion = emotion_map.get(label, "Unknown")
 
-        cv2.imshow("Live Emotion Detection", frame)
+            # yield frame + emotion
+            yield frame, current_emotion
 
-        if cv2.waitKey(1) & 0xFF == ord('q'):
-            break
+    finally:
+        cap.release()
 
-except Exception as e:
-    print(f"🔥 Critical Error: {e}")
+if __name__ == "__main__":
+    model_path = "C:\\python pro\\project DL\\Models\\Normal\\emotion_model_N.h5"
 
-finally:
-    cap.release()
-    cv2.destroyAllWindows()
-    print("✅ Clean exit")
+    try:
+        for frame, emotion in live_emotion_detector(model_path):
+
+            print(f"Detected Emotion: {emotion}")
+
+            # display frame
+            cv2.putText(frame, f"Emotion: {emotion}",
+                        (20, 40),
+                        cv2.FONT_HERSHEY_SIMPLEX,
+                        1,
+                        (0, 255, 0),
+                        2)
+
+            cv2.imshow("Test Camera", frame)
+
+            # exit
+            if cv2.waitKey(1) & 0xFF == ord('q'):
+                break
+
+    except Exception as e:
+        print(f"Error: {e}")
+
+    finally:
+        cv2.destroyAllWindows()
