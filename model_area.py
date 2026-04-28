@@ -3,8 +3,13 @@ import numpy as np
 import video_2_list as v2l
 import flow_mod as fm
 
-def give_to_model(path, model_mode = "N"):
-    frames = v2l.video_to_frames(path)  
+
+def give_to_model(frames, model_mode = "N") -> str:
+    '''
+    This need path of video (mp4, mkv) and by default Normal model is used, if you want to change
+    use these characters : "N" for normal model, "P" for pre-trained model  
+    '''
+    # frames = v2l.video_to_frames(path)  
     processed_frames = [frame for frame in frames] 
     processed_frames = tf.stack(processed_frames)
     if model_mode == "N": 
@@ -28,14 +33,12 @@ def give_to_model(path, model_mode = "N"):
     }
 
     predictions = model.predict(processed_frames)
-
     pred_labels = np.argmax(predictions, axis=1)
-
     final_output = [emotion_map[i] for i in pred_labels]
-
     return fm.get_mode(final_output)
 
 if __name__ == "__main__":
-    result = give_to_model("test.mp4")
+    frames = v2l.video_to_frames("test.mp4")
+    result = give_to_model(frames)
     print(result)
 

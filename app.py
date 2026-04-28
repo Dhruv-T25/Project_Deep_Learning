@@ -4,6 +4,8 @@ import cv2
 import tempfile
 import time
 import model_area as ma
+import warnings
+warnings.filterwarnings("ignore")
 
 
 # ---------- CONFIG ----------
@@ -60,13 +62,6 @@ def video_to_frames(path):
     cap, fps, duration = load_video(path)
     return extract_frames(cap, fps, duration)
 
-
-# ---------- MODEL PLACEHOLDER ----------
-def model_inference(frames):
-    # 🔴 tu yaha apna model add karega
-    return ["dummy" for _ in frames]
-
-
 # ---------- MAIN FLOW ----------
 if uploaded_file is not None:
 
@@ -87,25 +82,11 @@ if uploaded_file is not None:
 
                 # show first frame
                 # st.image(frames[0], caption="First Frame")
-
                 
                 # model output
                 st.write("## 🧠 Model Thinking")
                 output = ma.give_to_model(frames)
-
-                st.write(f"### Model output:{output}")
-                
-                time.sleep(2)
-
-                # st.write("Extracting features... 🧠")
-                # time.sleep(2)
-
-                # st.write("Running deep learning model... 🔥")
-                # time.sleep(2)
-                
-
-                # st.error("Hum Kuch Nahi Bata Sakte Hum Depression Me Hain 🙂‍↔️🙅‍♂️")
-                # st.video("test2.mp4")
+                st.write(f"Model output:*{output}*")         
 
         except Exception as e:
             st.error(str(e))

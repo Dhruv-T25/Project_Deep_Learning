@@ -21,5 +21,6 @@ def get_mode(arr: List[str]) -> str:
 
     return mode
 
-ers = get_mode(['ab','bc','ab','a'])
-print(ers)
+if __name__ == "__main__":
+    ers = get_mode(['ab','bc','ab','a'])
+    print(ers)
