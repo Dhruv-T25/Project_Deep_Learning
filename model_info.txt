@@ -1,0 +1,6 @@
+folder : C:\python pro\project DL
+
+normal cnn : https://colab.research.google.com/drive/1G85hYUL812CMNLO_TbqNL2G6sLu3g-0I?usp=sharing
+
+
+Ban gaya project
