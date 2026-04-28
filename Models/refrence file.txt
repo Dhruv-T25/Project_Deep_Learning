@@ -1,0 +1,2 @@
+f1 : https://www.kaggle.com/code/shahadathossaint/facial-emotion-recognitions/notebook
+f2 : https://www.kaggle.com/datasets/shuvoalok/raf-db-dataset/code

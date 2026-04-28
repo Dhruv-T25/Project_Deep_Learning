@@ -12,8 +12,5 @@ __pycache__/
 .DS_Store
 Thumbs.db
 
-# Models (VERY IMPORTANT)
-Models/
-
 # or specific
 *.h5
