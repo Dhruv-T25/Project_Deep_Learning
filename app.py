@@ -86,7 +86,7 @@ if uploaded_file is not None:
                 # model output
                 st.write("## 🧠 Model Thinking")
                 output = ma.give_to_model(frames)
-                st.write(f"Model output:*{output}*")         
+                st.write(f"> ## Model output : **{output}**")         
 
         except Exception as e:
             st.error(str(e))
