@@ -1,92 +1,54 @@
-# app.py
-import streamlit as st
 import cv2
-import tempfile
 import time
 import model_area as ma
-import warnings
-warnings.filterwarnings("ignore")
 
+cap = cv2.VideoCapture(0)
 
-# ---------- CONFIG ----------
-st.set_page_config(page_title="Video Analyzer", layout="centered")
+if not cap.isOpened():
+    print("❌ Camera not working")
+    exit()
 
-# ---------- TITLE ----------
-st.title("🎥 Video Analyzer")
-st.write("Upload video (max 30 sec) → process → results")
+last_time = 0
+current_emotion = "..."
+buffer = []   # frames collect karne ke liye
 
-# ---------- VIDEO UPLOAD ----------
-uploaded_file = st.file_uploader(
-    "Upload Video",
-    type=["mp4", "mkv"]
-)
-
-# ---------- FUNCTIONS ----------
-
-def load_video(path):
-    cap = cv2.VideoCapture(path)
-
-    if not cap.isOpened():
-        raise ValueError("Video not loaded")
-
-    fps = cap.get(cv2.CAP_PROP_FPS)
-    total_frames = cap.get(cv2.CAP_PROP_FRAME_COUNT)
-
-    duration = total_frames / fps
-
-    if duration > 30:
-        cap.release()
-        raise ValueError("❌ Video > 30 sec not allowed")
-
-    return cap, fps, int(duration)
-
-
-def extract_frames(cap, fps, duration):
-    frames = []
-
-    for sec in range(duration):
-        frame_id = int(sec * fps)
-        cap.set(cv2.CAP_PROP_POS_FRAMES, frame_id)
-
-        success, frame = cap.read()
-        if not success:
-            break
-
-        frames.append(frame)
-
-    cap.release()
-    return frames
-
-
-def video_to_frames(path):
-    cap, fps, duration = load_video(path)
-    return extract_frames(cap, fps, duration)
-
-# ---------- MAIN FLOW ----------
-if uploaded_file is not None:
-
-    # save temp file
-    tfile = tempfile.NamedTemporaryFile(delete=False)
-    tfile.write(uploaded_file.read())
-
-    # show video
-    st.video(uploaded_file)
-
-    if st.button("🚀 Process Video"):
+try:
+    while True:
+        ret, frame = cap.read()
+        if not ret:
+            continue
 
         try:
-            with st.spinner("Processing..."):
-                frames = video_to_frames(tfile.name)
+            # ---- har 0.5 sec pe frame collect ----
+            if time.time() - last_time > 0.5:
+                last_time = time.time()
+                buffer.append(frame)
 
-                # st.success(f"✅ Extracted {len(frames)} frames")
-
-                # show first frame
-                # st.image(frames[0], caption="First Frame")
-                
-                # model output
-                st.write("## 🧠 Model Thinking")
-                output = ma.give_to_model(frames)
-                st.write(f"> ## Model output : **{output}**")         
+            # ---- batch ready (2–4 frames) ----
+            if len(buffer) >= 3:
+                current_emotion = ma.give_to_model(buffer)  # 🔥 direct call
+                buffer.clear()  # reset
 
         except Exception as e:
-            st.error(str(e))
+            print(f"⚠️ Model error: {e}")
+
+        # ---- display ----
+        cv2.putText(frame, f"Emotion: {current_emotion}",
+                    (20, 40),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    1,
+                    (0, 255, 0),
+                    2)
+
+        cv2.imshow("Live Emotion Detection", frame)
+
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            break
+
+except Exception as e:
+    print(f"🔥 Critical Error: {e}")
+
+finally:
+    cap.release()
+    cv2.destroyAllWindows()
+    print("✅ Clean exit")
